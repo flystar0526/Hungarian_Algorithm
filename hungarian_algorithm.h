@@ -8,7 +8,10 @@
 #include <vector>
 
 struct HungarianSolution {
-  std::vector<std::pair<int, int>> solution;
+  HungarianSolution(std::list<std::pair<int, int>> pair, int cost)
+      : pair(pair), cost(cost) {};
+
+  std::list<std::pair<int, int>> pair;
   int cost;
 };
 

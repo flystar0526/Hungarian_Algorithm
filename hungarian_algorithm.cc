@@ -10,18 +10,38 @@ HungarianAlgorithm::HungarianAlgorithm(
 }
 
 HungarianSolution HungarianAlgorithm::Solve() {
+  int iteration = 0;
+
   while (true) {
+#ifdef DEBUG
+    std::cout << "Iteration " << iteration << std::endl;
+    std::cout << std::endl;
+#endif
+
     SubtractMinRowValue();
 
-    SubtractMinColValue();
-
 #ifdef DEBUG
+    std::cout << "SubtractMinRowValue : " << std::endl;
     for (int i = 0; i < row; i++) {
       for (int j = 0; j < col; j++) {
         std::cout << cost_matrix[i][j] << " ";
       }
       std::cout << std::endl;
     }
+    std::cout << std::endl;
+#endif
+
+    SubtractMinColValue();
+
+#ifdef DEBUG
+    std::cout << "SubtractMinColValue : " << std::endl;
+    for (int i = 0; i < row; i++) {
+      for (int j = 0; j < col; j++) {
+        std::cout << cost_matrix[i][j] << " ";
+      }
+      std::cout << std::endl;
+    }
+    std::cout << std::endl;
 #endif
 
     std::shared_ptr<bool> cover_row(new bool[row], [](bool* p) { delete[] p; });
@@ -31,39 +51,67 @@ HungarianSolution HungarianAlgorithm::Solve() {
 
     FindMinimumLines(cover_row, cover_col, element_type);
 
+#ifdef DEBUG
+    std::cout << "FindMinimumLines : " << std::endl;
+    std::cout << std::endl;
+    std::cout << "Cover Row : " << std::endl;
+    for (int i = 0; i < row; i++) {
+      std::cout << i << " : " << cover_row.get()[i] << std::endl;
+    }
+    std::cout << std::endl;
+
+    std::cout << "Cover Col :" << std::endl;
+    for (int i = 0; i < row; i++) {
+      std::cout << i << " : " << cover_col.get()[i] << std::endl;
+    }
+    std::cout << std::endl;
+
+    std::cout << "Element Type :" << std::endl;
+    for (int i = 0; i < row; i++) {
+      for (int j = 0; j < col; j++) {
+        std::cout << element_type.get()[i * col + j] << " ";
+      }
+      std::cout << std::endl;
+    }
+    std::cout << std::endl;
+#endif
+
     int line_count = TotalLine(cover_row, cover_col);
 
     if (line_count != row) {
       double min = FindMinimumNumber(cover_row, cover_col);
       AdjustWeight(cover_row, cover_col, min);
     } else {
+#ifdef DEBUG
+      std::cout << "Find the optimal solution" << std::endl << std::endl;
+#endif
       break;
     }
+
+#ifdef DEBUG
+    std::cout << "AdjustWeight : " << std::endl;
+    for (int i = 0; i < row; i++) {
+      for (int j = 0; j < col; j++) {
+        std::cout << cost_matrix[i][j] << " ";
+      }
+      std::cout << std::endl;
+    }
+    std::cout << std::endl;
+#endif
+
+    iteration++;
   }
 
-  std::list<std::pair<int, int>> solution;
+  std::list<std::pair<int, int>> pair;
   std::shared_ptr<bool> choice_table(new bool[row],
                                      [](bool* p) { delete[] p; });
   std::fill(choice_table.get(), choice_table.get() + row, false);
   bool find = false;
   int cost = 0;
 
-  FindOptimalSolution(solution, choice_table, cost, 0, find);
+  FindOptimalSolution(pair, choice_table, cost, 0, find);
 
-  for (int i = 0; i < row; i++) {
-    for (int j = 0; j < col; j++) {
-      std::cout << cost_matrix[i][j] << " ";
-    }
-    std::cout << std::endl;
-  }
-
-  std::cout << "Solution :" << std::endl;
-  for (auto ele : solution) {
-    std::cout << ele.first + 1 << ", " << ele.second + 1 << std::endl;
-  }
-  std::cout << "Cost : " << cost << std::endl;
-
-  return HungarianSolution();
+  return HungarianSolution(pair, cost);
 }
 
 void HungarianAlgorithm::SubtractMinRowValue() {
@@ -122,29 +170,6 @@ void HungarianAlgorithm::FindMinimumLines(std::shared_ptr<bool> cover_row,
       }
     }
   }
-
-#ifdef DEBUG
-  std::cout << "Cover Row : " << std::endl;
-  for (int i = 0; i < row; i++) {
-    std::cout << i << " : " << cover_row.get()[i] << std::endl;
-  }
-  std::cout << std::endl;
-
-  std::cout << "Cover Col :" << std::endl;
-  for (int i = 0; i < row; i++) {
-    std::cout << i << " : " << cover_col.get()[i] << std::endl;
-  }
-  std::cout << std::endl;
-
-  std::cout << "Element Type :" << std::endl;
-  for (int i = 0; i < row; i++) {
-    for (int j = 0; j < col; j++) {
-      std::cout << element_type.get()[i * col + j] << " ";
-    }
-    std::cout << std::endl;
-  }
-  std::cout << std::endl;
-#endif
 
 cover_all_star:
   std::fill(cover_row.get(), cover_row.get() + row, false);
@@ -293,11 +318,11 @@ void HungarianAlgorithm::AdjustWeight(std::shared_ptr<bool> cover_row,
 }
 
 void HungarianAlgorithm::FindOptimalSolution(
-    std::list<std::pair<int, int>>& solution,
-    std::shared_ptr<bool> choice_table, int& cost, int deep, bool& find) {
+    std::list<std::pair<int, int>>& pair, std::shared_ptr<bool> choice_table,
+    int& cost, int deep, bool& find) {
   for (int i = 0; i < col; i++) {
     if (cost_matrix[deep][i] == 0 && !choice_table.get()[i]) {
-      solution.emplace_back(std::pair<int, int>(deep, i));
+      pair.emplace_back(std::pair<int, int>(deep, i));
       choice_table.get()[i] = true;
       cost += source_matrix[deep][i];
 
@@ -306,12 +331,12 @@ void HungarianAlgorithm::FindOptimalSolution(
         return;
       }
 
-      FindOptimalSolution(solution, choice_table, cost, deep + 1, find);
+      FindOptimalSolution(pair, choice_table, cost, deep + 1, find);
 
       if (find) {
         return;
       } else {
-        solution.pop_back();
+        pair.pop_back();
         choice_table.get()[i] = false;
         cost -= source_matrix[deep][i];
       }
